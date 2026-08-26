@@ -1,0 +1,134 @@
+# ---------------------------------------------------------------------------
+# ws-gateway chart values
+#
+# All keys must be nested under "base-service:" so Helm routes them to the
+# base-service subchart.  Override individual keys at deploy time with:
+#   helm upgrade --set base-service.image.tag=sha-abc1234 ...
+#
+# ws-gateway is the only service in this system with a server-side
+# WebSocket, so it's also the only one that turns on the base chart's
+# opt-in websocket support (envoy.websocketUpgrade, ingress.annotations) —
+# every other service's rendered manifests are unaffected by that support
+# existing in the shared chart.
+# ---------------------------------------------------------------------------
+base-service:
+
+  fullnameOverride: "ws-gateway"
+  nameOverride: "ws-gateway"
+
+  # ---------------------------------------------------------------------------
+  # Image
+  # tag: "latest" here; CI replaces it with the git SHA via --set on every push.
+  # ---------------------------------------------------------------------------
+  image:
+    repository: ghcr.io/archtenet/ws-gateway
+    tag: latest
+    pullPolicy: IfNotPresent
+
+  replicaCount: 2
+
+  # ---------------------------------------------------------------------------
+  # Application container — non-sensitive runtime config only.
+  #
+  # Secrets (REDIS_URL, COGNITO_USER_POOL_ID, COGNITO_CLIENT_ID,
+  # WS_TICKET_SECRET) are sourced from AWS Secrets Manager and synced into a
+  # k8s Secret by External Secrets Operator, then injected via
+  # envFrom.secretRef in the base chart deployment. Never inline secrets here.
+  # ---------------------------------------------------------------------------
+  app:
+    port: 3000
+    env:
+      NODE_ENV: production
+      LOG_LEVEL: info
+      PORT: "3000"
+      # OpenTelemetry — traces exported to the in-cluster collector.
+      # Port 4317 (gRPC), not 4318 (HTTP/protobuf): tracing.ts instantiates
+      # OTLPTraceExporter from @opentelemetry/exporter-trace-otlp-grpc, which
+      # always speaks gRPC on whatever endpoint it is given -- pointing it at
+      # the HTTP receiver port silently drops every span.
+      OTEL_SERVICE_NAME: ws-gateway
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector.observability.svc.cluster.local:4317"
+      COGNITO_REGION: us-east-1
+      WS_TICKET_TTL_SECONDS: "30"
+      WS_HEARTBEAT_INTERVAL_MS: "30000"
+      WS_IDLE_TIMEOUT_MS: "70000"
+      # In-cluster ClusterIP DNS names — same namespace, so short names resolve.
+      CHAT_SERVICE_URL: "http://chat-service"
+      NOTIFICATION_SERVICE_URL: "http://notification-service"
+
+  resources:
+    requests:
+      cpu: 150m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  # ---------------------------------------------------------------------------
+  # Envoy PEP sidecar
+  # websocketUpgrade turns on the HCM/route upgrade_configs the base chart
+  # otherwise omits — without it Envoy strips the Upgrade header and every
+  # handshake through the sidecar fails as a plain HTTP request. 3600s route
+  # timeout so an idle-but-alive connection isn't killed by Envoy underneath
+  # the application-level heartbeat above (never 0 — see base chart comment).
+  # ---------------------------------------------------------------------------
+  envoy:
+    image: "envoyproxy/envoy:v1.29-latest"
+    websocketUpgrade: true
+    routeTimeoutSeconds: 3600
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 200m
+        memory: 128Mi
+
+  service:
+    port: 80
+
+  # ---------------------------------------------------------------------------
+  # Internal nginx Ingress
+  # Single path covers both POST /ws/ticket (plain HTTP) and the WS handshake
+  # at GET /ws (Upgrade). annotations raise the proxy timeouts and disable
+  # buffering — the base chart's 60s/30s defaults would silently drop an
+  # idle-but-alive WebSocket well before the app-level heartbeat ever fires.
+  # ---------------------------------------------------------------------------
+  ingress:
+    host: ws-gateway.internal.archtenet.com
+    path: /ws
+    pathType: Prefix
+    annotations:
+      nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+      nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+      nginx.ingress.kubernetes.io/proxy-buffering: "off"
+
+  # ---------------------------------------------------------------------------
+  # OPA PDP — Envoy ext_authz gRPC target
+  # ---------------------------------------------------------------------------
+  opaAddress: "opa-pdp.opa-system.svc.cluster.local:9191"
+
+  # ---------------------------------------------------------------------------
+  # Secrets & Identity (AWS)
+  # ---------------------------------------------------------------------------
+
+  # Expected keys: REDIS_URL, COGNITO_USER_POOL_ID, COGNITO_CLIENT_ID, WS_TICKET_SECRET
+  secretsManagerPath: "/prod/ws-gateway"
+
+  irsaRoleArn: "arn:aws:iam::ACCOUNT_ID:role/ws-gateway-irsa"
+
+  # ---------------------------------------------------------------------------
+  # Autoscaling
+  #
+  # WS connections are long-lived and pinned to whichever pod accepted the
+  # handshake, so scale-in is not a clean disconnect for holders of that pod —
+  # a lower target than the request/response services keeps eviction rarer,
+  # not because CPU usage differs.
+  # ---------------------------------------------------------------------------
+  autoscaling:
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+
+  podDisruptionBudget:
+    minAvailable: 1

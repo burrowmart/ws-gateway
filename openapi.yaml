@@ -1,0 +1,47 @@
+openapi: 3.0.0
+paths:
+  /health:
+    get:
+      operationId: HealthController_check
+      parameters: []
+      responses:
+        '200':
+          description: ''
+      tags:
+        - health
+  /ws/ticket:
+    post:
+      operationId: TicketController_issue
+      parameters: []
+      responses:
+        '201':
+          description: Mints a 30s single-use WS handshake ticket
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TicketResponse'
+      tags:
+        - ticket
+info:
+  title: WS Gateway API
+  description: >-
+    Ticket issuance for the realtime WebSocket handshake. The WebSocket itself (wss://.../ws?ticket=...) is not an HTTP
+    endpoint and does not appear here.
+  version: 0.1.0
+  contact: {}
+tags: []
+servers: []
+components:
+  schemas:
+    TicketResponse:
+      type: object
+      properties:
+        ticket:
+          type: string
+          description: Short-lived, single-use token — pass as wss://.../ws?ticket=
+        expiresIn:
+          type: number
+          description: Seconds until the ticket expires (and can no longer be used)
+      required:
+        - ticket
+        - expiresIn
