@@ -25,7 +25,8 @@ export class TicketController {
     const correlationId = getCorrelationId() ?? 'unknown';
     // Stashed (not embedded in the ticket) so it can be forwarded to
     // chat-service/notification-service for the life of the WS connection —
-    // both require this same caller-verified Cognito JWT on every request.
+    // both sit behind Envoy PEPs that verify this same Cognito JWT on every
+    // request.
     const authHeader = extractBearerToken(req.headers as Record<string, string | undefined>);
     return this.tickets.issue(claims.email as string, correlationId, authHeader);
   }

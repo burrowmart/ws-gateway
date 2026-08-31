@@ -277,7 +277,7 @@ See [.env.example](.env.example) for the full list. Notable ones:
 | `WS_HEARTBEAT_INTERVAL_MS` / `WS_IDLE_TIMEOUT_MS` | ping cadence and no-pong termination window; the timeout must exceed the interval (defaults `30000` / `70000`) |
 | `REDIS_URL` | pub/sub fan-out backbone **and** the single-use ticket store — there is no Mongo here |
 | `CHAT_SERVICE_URL` / `NOTIFICATION_SERVICE_URL` | REST bases called on channel-join (membership) and resume (replay) — never for domain writes |
-| `AUTH_DISABLED` | bypass Cognito JWT verification on `POST /ws/ticket` (local/test only); `x-test-user-email` then picks the identity |
+| `AUTH_DISABLED` | skip identity extraction on `POST /ws/ticket` (local/test only); `x-test-user-email` then picks the identity. Signature verification lives in the Envoy PEP, not here |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | blank = spans print to stdout via `ConsoleSpanExporter` |
 
 ## Deployment

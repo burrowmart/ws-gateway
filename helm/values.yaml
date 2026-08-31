@@ -30,8 +30,7 @@ base-service:
   # ---------------------------------------------------------------------------
   # Application container — non-sensitive runtime config only.
   #
-  # Secrets (REDIS_URL, COGNITO_USER_POOL_ID, COGNITO_CLIENT_ID,
-  # WS_TICKET_SECRET) are sourced from AWS Secrets Manager and synced into a
+  # Secrets (REDIS_URL,   # WS_TICKET_SECRET) are sourced from AWS Secrets Manager and synced into a
   # k8s Secret by External Secrets Operator, then injected via
   # envFrom.secretRef in the base chart deployment. Never inline secrets here.
   # ---------------------------------------------------------------------------
@@ -48,7 +47,6 @@ base-service:
       # the HTTP receiver port silently drops every span.
       OTEL_SERVICE_NAME: ws-gateway
       OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector.observability.svc.cluster.local:4317"
-      COGNITO_REGION: us-east-1
       WS_TICKET_TTL_SECONDS: "30"
       WS_HEARTBEAT_INTERVAL_MS: "30000"
       WS_IDLE_TIMEOUT_MS: "70000"
@@ -112,7 +110,7 @@ base-service:
   # Secrets & Identity (AWS)
   # ---------------------------------------------------------------------------
 
-  # Expected keys: REDIS_URL, COGNITO_USER_POOL_ID, COGNITO_CLIENT_ID, WS_TICKET_SECRET
+  # Expected keys: REDIS_URL, WS_TICKET_SECRET
   secretsManagerPath: "/prod/ws-gateway"
 
   irsaRoleArn: "arn:aws:iam::ACCOUNT_ID:role/ws-gateway-irsa"

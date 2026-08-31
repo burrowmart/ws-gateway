@@ -57,7 +57,7 @@ helm upgrade --install ws-gateway ./ws-gateway/helm \
 | `base-service.envoy.routeTimeoutSeconds` | `3600` | Never `0` — Sprig's `default` treats it as empty |
 | `base-service.ingress.annotations` | proxy-read/send-timeout `3600`, buffering `off` | Merged over the base chart's 60s/30s defaults |
 | `base-service.image.tag` | `latest` | CI sets this to the git SHA |
-| `base-service.secretsManagerPath` | `/prod/ws-gateway` | Must contain: `REDIS_URL`, `COGNITO_USER_POOL_ID`, `COGNITO_CLIENT_ID`, `WS_TICKET_SECRET` |
+| `base-service.secretsManagerPath` | `/prod/ws-gateway` | Must contain: `REDIS_URL`, `WS_TICKET_SECRET` |
 | `base-service.opaAddress` | `opa-pdp.opa-system.svc.cluster.local:9191` | OPA DaemonSet ClusterIP; `failure_mode_allow: false` enforced |
 | `base-service.ingress.host` | `ws-gateway.internal.archtenet.com` | Internal only — Cloudflare Tunnel entry point |
 | `base-service.replicaCount` | `2` | HPA overrides at runtime (min 2, max 10) |

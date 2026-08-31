@@ -12,8 +12,8 @@ export const WS_TICKET_USED_KEY_PREFIX = 'ws:ticket:used:';
 /**
  * Redis key prefix for the bearer token stashed at ticket-issue time.
  * chat-service and notification-service both require a real Cognito JWT on
- * every request (their own JwtGuard, no service-account bypass) — the WS
- * ticket only proves the handshake, so the gateway retains and forwards the
- * caller's original token for the lifetime of the connection.
+ * every request (their Envoy PEPs verify it; no service-account bypass) —
+ * the WS ticket only proves the handshake, so the gateway retains and
+ * forwards the caller's original token for the lifetime of the connection.
  */
 export const WS_TICKET_TOKEN_KEY_PREFIX = 'ws:ticket:token:';

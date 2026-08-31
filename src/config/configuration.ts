@@ -1,9 +1,5 @@
 export default () => ({
   port: parseInt(process.env.PORT ?? '3000', 10),
-  cognito: {
-    issuer: process.env.COGNITO_ISSUER ?? '',
-    audience: process.env.COGNITO_AUDIENCE ?? '',
-  },
   redisUrl: process.env.REDIS_URL ?? 'redis://localhost:6379',
   // HMAC secret signing the short-lived handshake ticket minted by POST /ws/ticket.
   wsTicketSecret: process.env.WS_TICKET_SECRET as string,
